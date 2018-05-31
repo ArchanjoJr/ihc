@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="description" content="">
+		<meta name="author" content="">
+		<title>UNIDADES DE SAUDE DE SAO JOSE DOS CAMPOS</title>
+		  <!-- Bootstrap Core CSS -->
+		<link href="css/bootstrap.min.css" rel="stylesheet">
+
+		<!-- Custom CSS -->
+		<link href="css/landing-page.css" rel="stylesheet">
+
+		<!-- Custom Fonts -->
+		<link href="font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+		<link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
+		<link href="https://hpneo.github.io/gmaps/examples/examples.css" rel="stylesheet" type="text/css">
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+		<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=true"></script>
+		<script type="text/javascript" src="http://hpneo.github.io/gmaps/gmaps.js"></script>
+		<script type="text/javascript" src="http://hpneo.github.io/gmaps/prettify/prettify.js"></script>
+		
+		<style type="text/css">
+			#map{
+
+				height:700px;
+
+			}
+		</style>
+
+		<script type="text/javascript">
+			var map;
+			var mv;
+//DEFININDO AS OPCOES INICIAIS DO MAPA COM VARIAVEIS	
+			var LatCenter= -23.2146027;
+			var LngCenter= -45.8854213;
+			var ZomCenter= 12;
+			var mp;
+			var mpos;
+			var Clat = null;
+			var Clng = null;
+			//var image="https://s16.postimg.org/me0wnn5bp/icone11.png";
+			$(document).ready(function(){
+				map = new GMaps({
+					div: '#map',
+					lat: LatCenter,
+					lng: LngCenter,
+					zoom:ZomCenter,
+					dblclick:function(e){
+						mp = map.addMarker({
+								lat:e.latLng.lat(),
+								lng:e.latLng.lng(),
+								title:'MARCADO PELO USUARIO',
+								//icon:'https://s29.postimg.org/89n2s5bpj/image.png'
+                                // icon:'img/icon.png'
+						});
+					mpos = mp.getPosition(); 
+					mv = true;
+					}
+				});
+//CENTRALIZANDO O MAPA COM GEOLOCALIZAÇÃO E COLOCANDO MARCADOR DE POSIÇÃO				
+			GMaps.geolocate({
+				success: function(position){
+					map.setCenter(position.coords.latitude, position.coords.longitude);
+					map.setZoom(16);
+					Clat = position.coords.latitude;
+					Clng = position.coords.longitude;
+					MGL = map.addMarker({
+  						lat: position.coords.latitude,
+  						lng: position.coords.longitude,
+  						title: 'Sua Localização',
+  						icon:'img/user.png',
+  						click: function(e) {
+    						alert('Clique em Um Marcador para ver informações \n Duplo clique para Traçar Rota');
+  						}
+					});
+				},
+				error: function(error){
+					alert('Geolocation failed: ' + error.message);
+					Clat = null;
+					Clng = null;
+				},
+				not_supported: function(){
+					alert("Seu Navegador Não Suporta Geolocalização");
+				}
+            });
+
+//BOTÃO QUE ADICIONA A FUNCAO DE LIMPAR AS ROTAS TRAÇADAS
+ 			 map.addControl({
+        		position: 'right_center',
+        		content: 'Limpar Rota',
+        		style: {
+          			margin: '5px',
+          			padding: '10px 10px',
+          			border: '2px solid',
+          			background: '#fff'
+        		},
+        		events: {
+          			click: function(e){
+          				if(mv){
+          					map.removeMarker(mp);
+          					map.removeMarker(MGL);
+                        	map.cleanRoute();
+            				document.getElementById('instructions').innerHTML = "";
+            			}else{
+            				map.removeMarker(mp);
+            				map.cleanRoute();
+            				document.getElementById('instructions').innerHTML = "";
+            			}
+            		}
+            	}
+            });
+				
+//BUSCANDO OS DADOS DA JSON
+				$.getJSON("https://api.myjson.com/bins/3c2di",function(data) { 
+//COLOCANDO OS MARCADORES DE CADA LOCAL
+					$.each(data,function(i){
+					
+						if(this.id == "upa"){
+							var image = "img/24h.png";
+							var Crot = "DodgerBlue";
+							var text = "Endereço: "+this.end+"<br\>"+this.hfun+"<br\>Telefone: "+this.tel+"<br\>"+this.prof+"<br\>"+this.serv;
+						}else if (this.id == "hosp"){
+							var text = "Endereço: "+this.end+"<br\>"+this.hfun+"<br\>Telefone: "+this.tel+"<br\>"+this.prof+"<br\>"+this.serv;
+							var Crot = "#b50813";
+							var image = "img/PS.png";
+						}
+						else{
+							var text = "Endereço: "+this.end+"<br\>"+this.hfun+"<br\>Telefone: "+this.tel;
+							var image = "img/ubs.png";
+							var Crot = "DodgerBlue";
+						}
+//ADICIONANDO OS MARCADORES COM BASE DO JSON https://api.myjson.com/bins/3oup6...
+						map.addMarker({
+							lat: this.lat,
+							lng: this.long,
+							title: this.unidade,
+							icon:image,
+							infoWindow: {
+								content: text
+							},
+//FUNCAO QUE TRAÇA A ROTA COM DUPLO CLIQUE NOS MARCADORES...							
+							dblclick:function(e){
+								if(mv){
+									map.travelRoute({
+									origin: [mpos.lat(), mpos.lng()],
+									destination: [e.latLng.lat(), e.latLng.lng()],
+									travelMode: 'driving',
+									step: function(e){
+										$('#instructions').append('<li>'+e.instructions+'</li>');
+										$('#instructions li:eq('+e.step_number+')').delay(50*e.step_number).fadeIn(200, function(){
+											map.drawPolyline({
+												path: e.path,
+												strokeColor: Crot,
+												strokeOpacity: 0.9,
+												strokeWeight: 7
+											});  
+										});
+									}
+								});	
+								}else{
+									map.travelRoute({
+									origin: [Clat, Clng],
+									destination: [e.latLng.lat(), e.latLng.lng()],
+									travelMode: 'driving',
+									step: function(e){
+										$('#instructions').append('<li>'+e.instructions+'</li>');
+										$('#instructions li:eq('+e.step_number+')').delay(50*e.step_number).fadeIn(200, function(){
+											map.drawPolyline({
+												path: e.path,
+												strokeColor: Crot,
+												strokeOpacity: 0.9,
+												strokeWeight: 7
+											});  
+										});
+									}
+								});
+								}
+						}
+						});	
+					});
+				});				
+			});
+
+  </script>
+</head>
+	<body>
+	
+     <nav class="navbar navbar-default navbar-fixed-top topnav" role="navigation">
+        <div class="container topnav">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="true">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand topnav"><h3>ENCONTRE A UNIDADE DE SAÚDE MAIS PERTO DE VOCÊ!<h3></a>
+            </div>
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav navbar-right">
+                    
+                    <li>
+                        <a href="http://www.sjc.sp.gov.br/">PREFEITURA</a>
+                    
+                        <a href="https://goo.gl/forms/QLooRPewkdPEfX802">CONTATO</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+	
+		<div id="map"></div>
+	<div class="row"> 
+                <ol type="1" id="instructions">
+                </ol>
+		</div>
+	<footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12">
+                    <ul class="list-inline">
+                        <li>
+                            <a href="http://ihcprojeto.esy.es/index.html#">HOME</a>
+                        </li>
+                        <li class="footer-menu-divider">&sdot;</li>
+                        <li>
+                            <a href="ihcdocumento_final.pdf">SOBRE</a>
+                        </li>
+                        <li class="footer-menu-divider">&sdot;</li>
+                        <li>
+                            <a href="#services">SERVIÇOS</a>
+                        </li>
+                        <li class="footer-menu-divider">&sdot;</li>
+                        <li>
+                            <a href="https://goo.gl/forms/QLooRPewkdPEfX802">CONTATO</a>
+                        </li>
+                    </ul>
+                    <p class="copyright text-muted small">William/Matheus projeto IHC FATEC direitos reservados</p>
+                </div>
+            </div>
+        </div>
+    </footer>	
+			
+	</body>
+</html>
